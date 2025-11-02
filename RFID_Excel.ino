@@ -1,100 +1,144 @@
-//Attendance list RFID in Excel
-
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <SPI.h>
 #include <MFRC522.h>
 
-#define SS_PIN 10 //RX slave select
+// Pin Definitions
 #define RST_PIN 9
+#define SS_PIN 10
+#define BUZZER_PIN 8
+#define GREEN_LED A0
+#define RED_LED A1
 
-MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
+// Initialize RFID and I2C LCD
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // I2C address 0x27 for 16x2 LCD
 
-byte card_ID[4]; //card UID size 4byte
-byte Name1[4]={0x00,0x00,0x00,0x00};//first UID card
-byte Name2[4]={0x00,0x00,0x00,0x00};//second UID card
+// RFID UID to Student Data Mapping
+struct Student {
+  String name;
+  String rollNo;
+  String branch;
+};
 
-//if you want the arduino to detect the cards only once
-int NumbCard[2];//this array content the number of cards. in my case i have just two cards.
-int j=0;        
+const int totalStudents = 4; // Adjust based on the number of students
+Student studentData[totalStudents] = {
+  {"Nitish ", "2022/B/43", "Electronics"},  // Replace with actual data
+  {"Kaleem", "2022/B/41", "Computer"},   // Replace with actual data
+  {"AAkash", "2022/B/42", "ECE"} 
+};
 
-int const RedLed=6;
-int const GreenLed=5;
-int const Buzzer=8;
-
-String Name;//user name
-long Number;//user number
-int n ;//The number of card you want to detect (optional)  
+String authorizedUIDs[totalStudents] = {
+  "33 0 C4 E4",  // Replace with your card's UID
+  "13 91 D6 D9",   // Replace with your card's UID
+  "E3 82 C2 E4"
+};
 
 void setup() {
-  Serial.begin(9600); // Initialize serial communications with the PC
-  SPI.begin();  // Init SPI bus
-  mfrc522.PCD_Init(); // Init MFRC522 card
-  
-  Serial.println("CLEARSHEET");                 // clears starting at row 1
-  Serial.println("LABEL,Date,Time,Name,Number");// make four columns (Date,Time,[Name:"user name"]line 48 & 52,[Number:"user number"]line 49 & 53)
+  // Initialize Serial Monitor
+  Serial.begin(9600);
 
-  pinMode(RedLed,OUTPUT);
-  pinMode(GreenLed,OUTPUT);
-  pinMode(Buzzer,OUTPUT);
+  // Initialize PLX-DAQ Header for Excel
+  Serial.println("CLEARDATA");
+  Serial.println("LABEL,Date,Time,Name,Roll No,Branch,Card UID,Status");
 
-   }
-    
+  // Initialize RFID
+  SPI.begin();
+  mfrc522.PCD_Init();
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("RFID Attendance");
+
+  // Initialize Buzzer and LEDs
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+}
+
 void loop() {
-  //look for new card
-   if ( ! mfrc522.PICC_IsNewCardPresent()) {
-  return;//got to start of loop if there is no card present
- }
- // Select one of the cards
- if ( ! mfrc522.PICC_ReadCardSerial()) {
-  return;//if read card serial(0) returns 1, the uid struct contians the ID of the read card.
- }
- 
- for (byte i = 0; i < mfrc522.uid.size; i++) {
-     card_ID[i]=mfrc522.uid.uidByte[i];
+  // Check if RFID card is present
+  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial())
+    return;
 
-       if(card_ID[i]==Name1[i]){
-       Name="NAME 1";//user name
-       Number=123456;//user number
-       j=0;//first number in the NumbCard array : NumbCard[j]
-      }
-      else if(card_ID[i]==Name2[i]){
-       Name="NAME 2";//user name
-       Number=789101;//user number
-       j=1;//Second number in the NumbCard array : NumbCard[j]
-      }
-      else{
-          digitalWrite(GreenLed,LOW);
-          digitalWrite(RedLed,HIGH);
-          goto cont;//go directly to line 85
-     }
+  // Read UID of the card
+  String cardUID = "";
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    cardUID += String(mfrc522.uid.uidByte[i], HEX);
+    if (i < mfrc522.uid.size - 1)
+      cardUID += " ";
+  }
+  cardUID.toUpperCase();
+
+  // Check if the UID is authorized
+  int index = getStudentIndex(cardUID);
+  if (index >= 0) {
+    // Access Granted
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Access Granted");
+    lcd.setCursor(0, 1);
+    lcd.print(studentData[index].name);
+
+    // Send Data to PLX-DAQ in Excel
+    sendToExcel(studentData[index].name, studentData[index].rollNo, studentData[index].branch, cardUID, "Granted");
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    buzz(2, 100);
+  } else {
+    // Access Denied
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Access Denied");
+    sendToExcel("Unknown", "Unknown", "Unknown", cardUID, "Denied");
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    buzz(3, 200);
+  }
+
+  delay(2000);  // Wait before clearing LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan a card...");
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+
+  // Halt PICC
+  mfrc522.PICC_HaltA();
 }
-      if(NumbCard[j] == 1){//to check if the card already detect
-      //if you want to use LCD
-      //Serial.println("Already Exist");
-      }
-      else{
-      NumbCard[j] = 1;//put 1 in the NumbCard array : NumbCard[j]={1,1} to let the arduino know if the card was detecting 
-      n++;//(optional)
-      Serial.print("DATA,DATE,TIME," + Name);//send the Name to excel
-      Serial.print(",");
-      Serial.println(Number); //send the Number to excel
-      digitalWrite(GreenLed,HIGH);
-      digitalWrite(RedLed,LOW);
-      digitalWrite(Buzzer,HIGH);
-      delay(30);
-      digitalWrite(Buzzer,LOW);
-      Serial.println("SAVEWORKBOOKAS,Names/WorkNames");
-      }
-      delay(1000);
-cont:
-delay(2000);
-digitalWrite(GreenLed,LOW);
-digitalWrite(RedLed,LOW);
 
-//if you want to close the Excel when all card had detected and save Excel file in Names Folder. in my case i have just 2 card (optional)
-//if(n==2){
-    
-  //  Serial.println("FORCEEXCELQUIT");
- //   }
+// Function to Get Student Index by UID
+int getStudentIndex(String uid) {
+  for (int i = 0; i < totalStudents; i++) {
+    if (uid == authorizedUIDs[i]) {
+      return i;
+    }
+  }
+  return -1;
 }
-    
 
+// Function to Send Data to Excel
+void sendToExcel(String name, String rollNo, String branch, String cardUID, String status) {
+  Serial.print("DATA,DATE,TIME,");
+  Serial.print(name);
+  Serial.print(",");
+  Serial.print(rollNo);
+  Serial.print(",");
+  Serial.print(branch);
+  Serial.print(",");
+  Serial.print(cardUID);
+  Serial.print(",");
+  Serial.println(status);
+}
+
+// Function to Control Buzzer
+void buzz(int times, int duration) {
+  for (int i = 0; i < times; i++) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(duration);
+    digitalWrite(BUZZER_PIN, LOW);
+    delay(duration);
+  }
+}
