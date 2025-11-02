@@ -1,77 +1,72 @@
-# 📟 RFID Based Attendance System with Arduino
+# 🧠 RFID-Based Attendance System Using Excel & Arduino
 
-This project demonstrates how to **interface the RFID RC522 module with Arduino UNO** to record attendance automatically. When a registered RFID tag is scanned, the system logs the **student’s ID, name, date, and time** — which can later be exported to **Excel** for attendance monitoring.
+## 📋 Project Overview
+This project records student attendance using **RFID tags**, an **Arduino board**, and **PLX-DAQ Excel interface**.  
+When a registered RFID card is scanned, the system logs **Date, Time, Name, Roll Number, Branch, Card UID, and Status** into an Excel file in real time.  
 
 ---
 
-## 🧰 Components Required
-- Arduino UNO  
+## ⚙️ Components Used
+- Arduino UNO / ESP32  
 - RFID Module (RC522)  
-- RFID Tags/Cards  
+- RFID Cards / Tags  
 - Jumper Wires  
-- Breadboard (optional)  
-- USB Cable for Arduino  
+- Breadboard  
+- Excel with PLX-DAQ Add-in  
 
 ---
 
-## 🔌 Circuit Diagram
-
-![Circuit](Schematic.png)
-
-**Connections Between RFID RC522 and Arduino UNO:**
-
-| RFID Pin | Arduino Pin |
-|-----------|--------------|
-| VCC       | 3.3V         |
-| GND       | GND          |
-| RST       | 9            |
-| MISO      | 12           |
-| MOSI      | 11           |
-| SCK       | 13           |
-| SDA (SS)  | 10           |
+## 💻 Software Requirements
+- Arduino IDE  
+- PLX-DAQ Excel Add-in  
+- Microsoft Excel  
 
 ---
 
-## 💻 Code Overview
+## 🧩 Circuit Schematic
+Below is the circuit schematic showing the connection between the Arduino and the RFID module:
 
-The main Arduino file is [`RFID_Excel.ino`](RFID_Excel.ino).  
-This code performs the following:
-
-1. Initializes the **RFID RC522** module.  
-2. Reads unique RFID tag IDs when a tag/card is placed near the reader.  
-3. Sends the data over **Serial communication** to the connected PC.  
-4. The data can be captured into an **Excel sheet** or any logging software.  
+![Circuit Schematic](Schematic.png)
 
 ---
 
-## ⚙️ How to Run
+## 📊 Output Result
+The attendance data is automatically logged into Excel through PLX-DAQ.  
+Each record contains Date, Time, Name, Roll No, Branch, Card UID, and Status.  
 
-1. Open `RFID_Excel.ino` in the **Arduino IDE**.  
-2. Select the **Arduino UNO** board and correct **COM port**.  
-3. Upload the code to the Arduino.  
-4. Open the **Serial Monitor** (9600 baud rate).  
-5. Place an RFID card near the reader to see its **unique ID** appear.  
-6. You can log the IDs in **Excel** using the “Data → From Serial Port” option or via a Python/C# script.  
+### Example Excel Output
+| Date | Time | Name | Roll No | Branch | Card UID | Status |
+|------|------|------|----------|---------|-----------|---------|
+| 06-03-2025 | 7:01:29 PM | Aakash | 2022/B/42 | ECE | E3 82 C2 E4 | Present |
+| 06-03-2025 | 7:01:31 PM | Unknown | Unknown | — | 35 C2 33 2 | Not Register |
+| 06-03-2025 | 7:01:35 PM | Aakash | 2022/B/42 | ECE | E3 82 C2 E4 | Present |
 
----
-
-## 📄 Output Example
-
-| Tag ID | Name | Date | Time |
-|--------|------|------|------|
-| 53 A1 6F 12 | Shubh | 2025-11-02 | 10:30 AM |
-| 48 B2 7E 9C | Ritesh | 2025-11-02 | 10:32 AM |
+### Screenshot Output
+![Excel Output](rfid_result.png)
 
 ---
 
-## 🔮 Future Enhancements
-- Integrate with **database or Google Sheets** for real-time updates.  
-- Add **LCD display** for visual feedback.  
-- Implement **buzzer and LED indicators** for authentication status.  
-- Expand to a **Wi-Fi-based attendance system** using NodeMCU/ESP32.  
+## 📂 File Structure
+```
+RFID_Attendance/
+│
+├── RFID_Excel.ino          # Arduino code
+├── Schematic.png           # Circuit diagram
+├── rfid_result.png         # Excel output screenshot
+└── README.md               # Documentation file
+```
 
 ---
 
+## 🧾 Working Principle
+1. Each RFID card has a unique UID.  
+2. When the card is scanned, the UID is read by the RFID module.  
+3. The Arduino compares the UID with the stored list.  
+4. If matched, PLX-DAQ logs “Present” with Date & Time in Excel.  
+5. If not matched, it logs “Not Register.”  
 
-## 📝 License
-This project is licensed under the **MIT License** — free to use and modify for educational purposes.
+---
+
+## 🏁 Conclusion
+This system provides a **low-cost, real-time attendance solution** suitable for schools and colleges.  
+It eliminates manual entry errors and ensures accurate tracking.
