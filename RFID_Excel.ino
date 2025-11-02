@@ -1,6 +1,4 @@
 //Attendance list RFID in Excel
-//Created by AG Mix- Arnav Gupta https://www.youtube.com/c/AGMixArnavGupta/featured
-//Read the code below and use it for any of your creations.
 
 #include <SPI.h>
 #include <MFRC522.h>
@@ -99,3 +97,4 @@ digitalWrite(RedLed,LOW);
  //   }
 }
     
+
